@@ -13,7 +13,7 @@ import {
   SRGBColorSpace,
   Vector3,
 } from '@iwsdk/core';
-import { BoardModel, COLUMNS, type Card, type ColumnId } from './board-model.js';
+import { BoardModel, COLUMNS, DOING_LIMIT, type Card, type ColumnId } from './board-model.js';
 
 /**
  * Handboard: a hands-first morning planning board. Cards are physical tiles
@@ -148,9 +148,21 @@ export class BoardSystem extends createSystem({
   }
 
   private drop(id: string, column: ColumnId): void {
+    const from = this.model.cards.find((c) => c.id === id)?.column;
     const moved = this.model.move(id, column);
     this.layout();
+    if (!moved && column === 'doing' && from !== 'doing') this.flashFull();
     (window as any).handboardLast = { id, column, moved };
+  }
+
+  /** Doing refused a card: turn its header red for a moment so the hand knows why. */
+  private flashFull(): void {
+    const h = this.headers.get('doing')!;
+    const hm = h.material as MeshStandardMaterial;
+    hm.map?.dispose();
+    hm.map = headerTexture('Doing is full', '#ef4444', `max ${DOING_LIMIT}`);
+    hm.needsUpdate = true;
+    setTimeout(() => this.layout(), 1400);
   }
 
   private columnAt(x: number): ColumnId {
